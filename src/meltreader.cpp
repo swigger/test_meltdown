@@ -128,17 +128,17 @@ int CMeltReader::read_byte(uintptr_t addr, void (*loader)())
 		if (mcnt > 1)
 		{
 			//fprintf(stderr, "multi cached?\n");
+			sched_yield();
 			continue;
 		}
 		for (i=0; i<256; i++) {
 			if (times[i] > m_th2)
-				goto failed_probe;
+			{
+				//lost CPU?
+				-- c;
+				break;
+			}
 		}
-		return -1;
-	failed_probe:
-		//lost CPU?
-		sched_yield();
-		continue;
 	}
 	return -1;
 }
