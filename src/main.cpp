@@ -33,7 +33,13 @@ static bool check_tsx()
 void sigsegv(int sig, siginfo_t *siginfo, void *context)
 {
 	ucontext_t *ucontext = (ucontext_t*)context;
+#ifdef __linux__
 	ucontext->uc_mcontext.gregs[REG_RIP] += 20;
+#elif defined(__APPLE__)
+	ucontext->uc_mcontext->__ss.__rip += 20;
+#else
+#error "todo..."
+#endif
 }
 
 int set_signal(void)
@@ -73,7 +79,7 @@ int main(int argc, char ** argv)
 	if (argc == 3)
 	{
 		addr = strtoull(argv[1], 0, 16);
-		len = strtoull(argv[2], 0, 0);
+		len = (uint32_t)strtoull(argv[2], 0, 0);
 	}
 
 	char * buf = (char*)malloc(len);

