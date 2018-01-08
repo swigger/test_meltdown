@@ -12,7 +12,7 @@ public:
 	
 	CMeltReader();
 	~CMeltReader();
-	int read_byte(uintptr_t addr);
+	int read_byte(uintptr_t addr, void(*loader)());
 
 private:
 	void find_cache_hit_threshold();

