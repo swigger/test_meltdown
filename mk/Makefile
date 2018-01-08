@@ -1,3 +1,4 @@
+CXXFLAGS=-O2 -g
 LIBS=
 
 HOST=$(shell uname -s)
@@ -11,6 +12,9 @@ endif
 all: testmd
 
 testmd:main.o meltreader.o
-	gcc -o $@ $^ $(LIBS)
+	gcc -g -o $@ $^ $(LIBS)
+
+clean:
+	-@rm -f testmd *.o
 
 vpath %.cpp ../src

