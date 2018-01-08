@@ -148,10 +148,11 @@ void CMeltReader::dump_hex(uintptr_t pos, const void * buf, size_t len, FILE * f
 		uintptr_t addr = pos + i;
 		size_t l = len-i; if (l>16) l = 16;
 		char * os = cbuf;
+		int aw = sizeof(void*)+4;
 		
-		for (int j=0; j<2*sizeof(void*); ++j)
+		for (int j=0; j<aw; ++j)
 		{
-			int o = 4 * (2*sizeof(void*) - j - 1);
+			int o = 4 * (aw - j - 1);
 			*os++ = hextbl[0xf & (addr>>o)];
 		}
 		*os++ = ':';
