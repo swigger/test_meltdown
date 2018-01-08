@@ -117,7 +117,7 @@ int CMeltReader::read_byte(uintptr_t addr)
 			}
 		}
 		if (mcnt == 1) return ch;
-		if (i > 1)
+		if (mcnt > 1)
 		{
 			fprintf(stderr, "multi cached?\n");
 			continue;
