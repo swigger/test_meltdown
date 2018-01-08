@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		798BA7FE200358AB00BC32C5 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 798BA7FD200358AB00BC32C5 /* main.cpp */; };
+		798BA806200358E000BC32C5 /* meltreader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 798BA804200358E000BC32C5 /* meltreader.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,6 +26,8 @@
 /* Begin PBXFileReference section */
 		798BA7FA200358AB00BC32C5 /* test_meltdown */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = test_meltdown; sourceTree = BUILT_PRODUCTS_DIR; };
 		798BA7FD200358AB00BC32C5 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		798BA804200358E000BC32C5 /* meltreader.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = meltreader.cpp; sourceTree = "<group>"; };
+		798BA805200358E000BC32C5 /* meltreader.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = meltreader.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -41,7 +44,7 @@
 		798BA7F1200358AB00BC32C5 = {
 			isa = PBXGroup;
 			children = (
-				798BA7FC200358AB00BC32C5 /* test_meltdown */,
+				798BA7FC200358AB00BC32C5 /* src */,
 				798BA7FB200358AB00BC32C5 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,12 +57,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		798BA7FC200358AB00BC32C5 /* test_meltdown */ = {
+		798BA7FC200358AB00BC32C5 /* src */ = {
 			isa = PBXGroup;
 			children = (
 				798BA7FD200358AB00BC32C5 /* main.cpp */,
+				798BA804200358E000BC32C5 /* meltreader.cpp */,
+				798BA805200358E000BC32C5 /* meltreader.hpp */,
 			);
-			path = test_meltdown;
+			path = src;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -119,6 +124,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				798BA806200358E000BC32C5 /* meltreader.cpp in Sources */,
 				798BA7FE200358AB00BC32C5 /* main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
